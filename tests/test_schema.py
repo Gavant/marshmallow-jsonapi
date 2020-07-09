@@ -1,5 +1,5 @@
 import pytest
-import marshmallow as ma
+import toastedmarshmallow as ma
 from marshmallow import ValidationError
 
 from marshmallow_jsonapi import Schema, fields

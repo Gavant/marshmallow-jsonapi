@@ -1,7 +1,7 @@
 import itertools
 import re
 
-import marshmallow as ma
+import toastedmarshmallow as ma
 from marshmallow.exceptions import ValidationError
 from marshmallow.utils import is_collection
 
