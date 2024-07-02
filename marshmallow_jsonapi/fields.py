@@ -2,6 +2,7 @@
 fields for serializing JSON API-formatted hyperlinks.
 """
 import collections
+import logging
 
 from marshmallow import ValidationError, class_registry
 from marshmallow.fields import Field
@@ -12,6 +13,11 @@ from marshmallow.base import SchemaABC
 from marshmallow.utils import is_collection, missing as missing_
 
 from .utils import get_value, resolve_params, _MARSHMALLOW_VERSION_INFO
+
+
+logging.basicConfig(level=logging.INFO, format='[%(name)s]@(%(asctime)s): %(message)s')
+logger = logging.getLogger("marshmallow-json-api:fields")
+logger.setLevel(logging.INFO)
 
 
 _RECURSIVE_NESTED = "self"
@@ -275,13 +281,18 @@ class Relationship(BaseRelationship):
                 ret["links"]["self"] = self_url
             if related_url:
                 ret["links"]["related"] = related_url
+        
+        logger.info(f"Searlizing the following: {self} with {value} ({attr}, {obj})")
 
         # resource linkage is required when including the data
         if self.include_resource_linkage and (self.include_data or self.temp_include):
+            logger.info(f"{self} with value={value} has included resource linkage AND it should included ({self.include_data}, {self.temp_include})")
             if value is None:
                 ret["data"] = [] if self.many else None
+                logger.info(f"value is None using {ret['data']}")
             else:
                 ret["data"] = self.get_resource_linkage(value)
+                logger.info(f"value is NOT None ({value}) using {ret['data']}")
 
         if (self.include_data or self.temp_include) and value is not None:
             if self.many:

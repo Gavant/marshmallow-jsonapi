@@ -1,5 +1,6 @@
 import itertools
 import re
+import logging
 
 import marshmallow as ma
 from marshmallow.exceptions import ValidationError
@@ -9,6 +10,10 @@ from .fields import BaseRelationship, DocumentMeta, ResourceMeta
 from .fields import _RESOURCE_META_LOAD_FROM, _DOCUMENT_META_LOAD_FROM
 from .exceptions import IncorrectTypeError
 from .utils import resolve_params, _MARSHMALLOW_VERSION_INFO, get_dump_key
+
+logging.basicConfig(level=logging.INFO, format='[%(name)s]@(%(asctime)s): %(message)s')
+logger = logging.getLogger("marshmallow-json-api:schema")
+logger.setLevel(logging.INFO)
 
 
 TYPE = "type"
@@ -114,23 +119,32 @@ class Schema(ma.Schema):
 
     def check_relations(self, relations, temporary=False):
         """Recursive function which checks if a relation is valid."""
+
+        logger.info(f"{self}: Checking relations: {relations}, temporary={temporary}")
+
         for key, value in self.fields.items():
             if isinstance(value, BaseRelationship):
                 value.temp_include = False
 
         for rel in relations:
             if not rel:
+                logger.info(f"skipping: {rel}")
                 continue
             fields = rel.split(".", 1)
+            logger.info(f"Fields: {fields}")
 
             local_field = fields[0]
 
             if local_field == '*':
+                logger.info("Wildcard!")
                 #check for wildcard include
                 for key, value in self.fields.items():
+                    logger.info(f"Wildcard search: {key}, {value}")
                     if isinstance(value, BaseRelationship):
+                        logger.info(f"Including: {value}")
                         value.temp_include = True
                         if len(fields) > 1:
+                            logger.info(f"Continuing to check for: {fields[1:]}")
                             value.schema.check_relations(fields[1:])
             else:
                 if local_field not in self.fields:
@@ -145,9 +159,12 @@ class Schema(ma.Schema):
                     )
                 if temporary:
                     field.temp_include = True
+                    logger.info(f"Temporarily including {field}")
                 else:
+                    logger.info(f"Including {field}")
                     field.include_data = True
                 if len(fields) > 1:
+                    logger.info(f"Continuing to check {fields[1:]}")
                     field.schema.check_relations(fields[1:])
 
     @ma.post_dump(pass_many=True)
@@ -164,6 +181,7 @@ class Schema(ma.Schema):
         # reset the include to the base includes so any changes to the schema
         # and any included data from previous requests are wiped
         if self.included_data:
+            logger.info(f"Clearing out included data: {self.included_data}")
             self.included_data = {}
         return ret
 
@@ -171,6 +189,7 @@ class Schema(ma.Schema):
         if not self.included_data:
             return data
         data["included"] = list(self.included_data.values())
+        logger.info(f"({self}) Including the following: {self.included_data}")
         return data
 
     def render_meta_document(self, data):
