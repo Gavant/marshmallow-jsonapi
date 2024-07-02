@@ -81,6 +81,7 @@ class Schema(ma.Schema):
 
     def __init__(self, *args, **kwargs):
         self.include_data = kwargs.pop("include_data", ())
+        self.temporary_includes = {}
 
         super().__init__(*args, **kwargs)
         if self.include_data:
@@ -103,6 +104,7 @@ class Schema(ma.Schema):
                 "`self_url_kwargs` is specified"
             )
         self.included_data = {}
+        self.temporary_includes = {}
         self.document_meta = {}
 
     OPTIONS_CLASS = SchemaOpts
@@ -119,10 +121,6 @@ class Schema(ma.Schema):
         """Recursive function which checks if a relation is valid."""
 
         logger.debug(f"{self}: Checking relations: {relations}, temporary={temporary}")
-
-        for key, value in self.fields.items():
-            if isinstance(value, BaseRelationship):
-                value.temp_include = False
 
         for rel in relations:
             if not rel:
@@ -141,6 +139,7 @@ class Schema(ma.Schema):
                     if isinstance(value, BaseRelationship):
                         logger.debug(f"Including: {value}")
                         value.temp_include = True
+                        value.root.temporary_includes[id(value)] = value
                         if len(fields) > 1:
                             logger.debug(f"Continuing to check for: {fields[1:]}")
                             value.schema.check_relations(fields[1:], temporary)
@@ -157,6 +156,7 @@ class Schema(ma.Schema):
                     )
                 if temporary:
                     field.temp_include = True
+                    field.root.temporary_includes[id(field)] = field
                     logger.debug(f"Temporarily including {field}")
                 else:
                     logger.debug(f"Including {field}")
@@ -181,6 +181,9 @@ class Schema(ma.Schema):
         if self.included_data:
             logger.debug(f"Clearing out included data: {self.included_data}")
             self.included_data = {}
+        for field in self.temporary_includes.values():
+            field.temp_include = False
+        self.temporary_includes = {}
         return ret
 
     def render_included_data(self, data):

@@ -280,11 +280,11 @@ class Relationship(BaseRelationship):
             if related_url:
                 ret["links"]["related"] = related_url
         
-        logger.debug(f"Searlizing the following: {getattr(self, "schema", self)} with {value} ({attr}, {obj})")
+        logger.debug(f"Searlizing the following: {getattr(self, 'schema', self)} with {value} ({attr}, {obj})")
 
         # resource linkage is required when including the data
         if self.include_resource_linkage and (self.include_data or self.temp_include):
-            logger.debug(f"{getattr(self, "schema", self)} with value={value} has included resource linkage AND it should included ({self.include_data}, {self.temp_include})")
+            logger.debug(f"{getattr(self, 'schema', self)} with value={value} has included resource linkage AND it should included ({self.include_data}, {self.temp_include})")
             if value is None:
                 ret["data"] = [] if self.many else None
                 logger.debug(f"value is None using {ret['data']}")
@@ -311,12 +311,12 @@ class Relationship(BaseRelationship):
         item = data["data"] 
         original = self.root.included_data.get((item["type"], item["id"]))
         self.root.included_data[(item["type"], item["id"])] = self._merge(original, item) if original else item
-            
         included = result.get('included', [])
         for item in included:
             key = (item.get('type'), item.get('id'))
             original = self.root.included_data.get(key)
             self.root.included_data[key] = self._merge(original, item) if original else item
+
         
     def _merge(self, source, destination):
         for key, value in source.items():
