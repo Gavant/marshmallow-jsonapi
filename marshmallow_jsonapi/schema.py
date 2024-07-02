@@ -143,7 +143,7 @@ class Schema(ma.Schema):
                         value.temp_include = True
                         if len(fields) > 1:
                             logger.debug(f"Continuing to check for: {fields[1:]}")
-                            value.schema.check_relations(fields[1:])
+                            value.schema.check_relations(fields[1:], temporary)
             else:
                 if local_field not in self.fields:
                     raise ValueError(f'Unknown field "{local_field}"')
@@ -163,7 +163,7 @@ class Schema(ma.Schema):
                     field.include_data = True
                 if len(fields) > 1:
                     logger.debug(f"Continuing to check {fields[1:]}")
-                    field.schema.check_relations(fields[1:])
+                    field.schema.check_relations(fields[1:], temporary)
 
     @ma.post_dump(pass_many=True)
     def format_json_api_response(self, data, many, **kwargs):
