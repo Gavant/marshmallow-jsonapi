@@ -165,8 +165,25 @@ class Schema(ma.Schema):
                     logger.debug(f"Continuing to check {fields[1:]}")
                     field.schema.check_relations(fields[1:], temporary)
 
-    @ma.post_dump(pass_many=True)
-    def format_json_api_response(self, data, many, **kwargs):
+    def remove_temporary_relations(self, relations):
+        """Clears out any temporary includes"""
+
+        for rel in relations:
+            if not rel:
+                logger.debug(f"skipping: {rel}")
+                continue
+            fields = rel.split(".", 1)
+            logger.debug(f"Fields: {fields}")
+
+            local_field = fields[0]
+            field = self.fields[local_field]
+            field.temp_include = False
+            if len(fields) > 1:
+                logger.debug(f"Continuing to check {fields[1:]}")
+                field.schema.remove_temporary_relations(fields[1:])
+
+    @ma.post_dump(pass_many=True, pass_original=True)
+    def format_json_api_response(self, data, original_data, many, **kwargs):
         """Post-dump hook that formats serialized data as a top-level JSON API object.
 
         See: http://jsonapi.org/format/#document-top-level
@@ -178,12 +195,18 @@ class Schema(ma.Schema):
 
         # reset the include to the base includes so any changes to the schema
         # and any included data from previous requests are wiped
+
+        og_data = original_data if not isinstance(original_data, list) else original_data[0]
+
+        if isinstance(og_data, dict) and og_data.get('includes', None):
+            self.remove_temporary_relations(og_data.get('includes', []))
+
         if self.included_data:
             logger.debug(f"Clearing out included data: {self.included_data}")
             self.included_data = {}
-        for field in self.temporary_includes.values():
-            field.temp_include = False
-        self.temporary_includes = {}
+    
+        if self.temporary_includes:
+            self.temporary_includes = {}
         return ret
 
     def render_included_data(self, data):
