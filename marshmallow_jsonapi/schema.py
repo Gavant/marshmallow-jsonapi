@@ -196,7 +196,15 @@ class Schema(ma.Schema):
         # reset the include to the base includes so any changes to the schema
         # and any included data from previous requests are wiped
 
-        og_data = original_data if not isinstance(original_data, list) else original_data[0]
+        og_data = (
+            original_data
+            if not isinstance(original_data, list)
+            else (
+                original_data[0]
+                if original_data
+                else original_data
+            )
+        )
 
         if isinstance(og_data, dict) and og_data.get('includes', None):
             self.remove_temporary_relations(og_data.get('includes', []))
