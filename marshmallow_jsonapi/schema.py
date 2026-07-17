@@ -9,7 +9,7 @@ from marshmallow.utils import is_collection
 from .fields import BaseRelationship, DocumentMeta, ResourceMeta
 from .fields import _RESOURCE_META_LOAD_FROM, _DOCUMENT_META_LOAD_FROM
 from .exceptions import IncorrectTypeError
-from .utils import resolve_params, _MARSHMALLOW_VERSION_INFO, get_dump_key
+from .utils import resolve_params, get_dump_key
 
 logger = logging.getLogger("marshmallow-json-api:schema")
 
@@ -182,7 +182,7 @@ class Schema(ma.Schema):
                 logger.debug(f"Continuing to check {fields[1:]}")
                 field.schema.remove_temporary_relations(fields[1:])
 
-    @ma.post_dump(pass_many=True, pass_original=True)
+    @ma.post_dump(pass_collection=True, pass_original=True)
     def format_json_api_response(self, data, original_data, many, **kwargs):
         """Post-dump hook that formats serialized data as a top-level JSON API object.
 
@@ -281,7 +281,7 @@ class Schema(ma.Schema):
         return payload
 
 
-    @ma.pre_load(pass_many=True)
+    @ma.pre_load(pass_collection=True)
     def unwrap_request(self, data, many, **kwargs):
         if "data" not in data:
             raise ma.ValidationError(
@@ -336,7 +336,7 @@ class Schema(ma.Schema):
                 res[r[0]] = r[1].get('id')
         return res
 
-    @ma.post_load(pass_many=True)
+    @ma.post_load(pass_collection=True)
     def extract_foreign_keys(self, data, many, **kwargs):
         # Check for foreign key field on relationship and populate it on schema if it exists
         # if foreign key is sent then the nested object is NOT sent
@@ -345,15 +345,11 @@ class Schema(ma.Schema):
         return self._extract_fk(data)
 
     def on_bind_field(self, field_name, field_obj):
-        """Schema hook override. When binding fields, set ``data_key`` (on marshmallow 3) or
-        load_from (on marshmallow 2) to the inflected form of field_name.
+        """Schema hook override. When binding fields, set ``data_key`` to the
+        inflected form of field_name.
         """
-        if _MARSHMALLOW_VERSION_INFO[0] < 3:
-            if not field_obj.load_from:
-                field_obj.load_from = self.inflect(field_name)
-        else:
-            if not field_obj.data_key:
-                field_obj.data_key = self.inflect(field_name)
+        if not field_obj.data_key:
+            field_obj.data_key = self.inflect(field_name)
         return None
 
     def _do_load(self, data, many=None, **kwargs):
@@ -379,14 +375,6 @@ class Schema(ma.Schema):
             formatted_messages = self.format_errors(error_messages, many=many)
             err.messages = formatted_messages
             raise err
-        else:
-            # On marshmallow 2, _do_load returns a tuple (load_data, errors)
-            if _MARSHMALLOW_VERSION_INFO[0] < 3:
-                data, error_messages = result
-                if "_schema" in error_messages:
-                    error_messages = error_messages["_schema"]
-                formatted_messages = self.format_errors(error_messages, many=many)
-                return data, formatted_messages
         return result
 
     def _get_temp_id(self, item):
